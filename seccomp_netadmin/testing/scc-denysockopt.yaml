@@ -1,0 +1,46 @@
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities: null
+apiVersion: security.openshift.io/v1
+defaultAddCapabilities: null
+fsGroup:
+  type: MustRunAs
+groups:
+- system:authenticated
+kind: SecurityContextConstraints
+metadata:
+  annotations:
+    kubernetes.io/description: Allows NET_ADMIN and NET_RAW capabilities (as well as running as root)
+      but enforces our custom seccomp profile which blocks a specific subset of setsockopt calls.
+  name: denysockopt
+priority: null
+readOnlyRootFilesystem: false
+allowedCapabilities:
+- NET_ADMIN
+- NET_RAW
+requiredDropCapabilities:
+- KILL
+- MKNOD
+- SETUID
+- SETGID
+seccompProfiles:
+- localhost/example-seccomp.json
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users: []
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
