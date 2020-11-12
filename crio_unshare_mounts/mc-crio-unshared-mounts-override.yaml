@@ -1,0 +1,15 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: crio-unshared-mounts
+spec:
+  config:
+    ignition:
+      version: 3.1.0
+    storage:
+      files:
+      - contents:
+          source: data:text/plain;charset=utf8;base64,W1NlcnZpY2VdCkV4ZWNTdGFydD0KRXhlY1N0YXJ0PXVuc2hhcmUgLW0gLS1wcm9wYWdhdGlvbiBzbGF2ZSBcCiAgICAgICAgICAvdXNyL2Jpbi9jcmlvIFwKICAgICAgICAgICRDUklPX1NUT1JBR0VfT1BUSU9OUyBcCiAgICAgICAgICAkQ1JJT19ORVRXT1JLX09QVElPTlMgXAogICAgICAgICAgJENSSU9fTUVUUklDU19PUFRJT05TCg==
+        filesystem: root
+        mode: 420
+        path: /etc/systemd/system/crio.service.d/override.conf
