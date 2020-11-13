@@ -1,7 +1,7 @@
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
-  name: crio-unshared-mounts
+  name: $OBJNAME
 spec:
   config:
     ignition:
@@ -9,7 +9,7 @@ spec:
     storage:
       files:
       - contents:
-          source: data:text/plain;charset=utf8;base64,W1NlcnZpY2VdClByaXZhdGVNb3VudHM9b24K
+          source: data:text/plain;charset=utf8;base64,$CONTENTS
         filesystem: root
         mode: 420
-        path: /etc/systemd/system/crio.service.d/override.conf
+        path: $PATH

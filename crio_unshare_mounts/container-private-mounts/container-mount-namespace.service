@@ -1,0 +1,7 @@
+[Unit]
+Description=Manages a mount namespace that both kubelet and crio can use to share their container-specific mounts
+
+[Service]
+PrivateMounts=on
+ExecStart=bash -c 'while :; do sleep infinity; done'
+

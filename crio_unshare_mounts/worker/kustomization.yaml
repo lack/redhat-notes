@@ -4,4 +4,4 @@ namePrefix: 99-worker-
 commonLabels:
   machineconfiguration.openshift.io/role: worker
 bases:
-  - ../crio-private-mounts
+  - ../container-private-mounts

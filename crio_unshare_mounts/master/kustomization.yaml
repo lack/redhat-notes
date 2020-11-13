@@ -4,4 +4,4 @@ namePrefix: 99-master-
 commonLabels:
   machineconfiguration.openshift.io/role: master
 bases:
-  - ../crio-private-mounts
+  - ../container-private-mounts

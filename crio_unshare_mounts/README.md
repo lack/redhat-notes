@@ -1,22 +1,28 @@
 # Overview
 
-This machine config addition moves crio down into its own mount namespace to hide its many overlay mounts from systemd.
+Thse machine config additions create a new mount namespace and causes both crio and kubelet to launch within it to hide their many many mounts from systemd.
 
-It does so by creating a service override file in `/etc/systemd/system/crio.service.d/override.conf` which turns on systemd's PrivateMounts mode, which hides crio's container-specific overlay mounts from systemd. This is roughly equivalent to running crio under `unshare -m --propagation=slave`, but doesn't involve editing the ExecStart parameter.
+It does so by creating:
+ - A service called container-mount-namespace.service which spawns a separate namespace (via systemd's 'PrivateMounts' mechanism), and then sleeps forever.
+ - An override file for each of crio.service and kubelet.service which wrap the original command under 'nsenter' so they both use the mount namespace created by 'container-mount-namespace.service'
 
-With this in place:
-- crio sees the mounts done by kubelet in the top-level mount namespace (so it sees the secret mounts etc)
-- crio creates its container overlay mounts in its own namespace but these are not propagated up to the parent namespace (so systemd will never see them)
-
-End result: this isn't 100% isolation of OpenShift mounts from systemd, as the kubelet mounts are still in the top-level namespace, but it's reduced the number of systemd-facing mounts.
+With this in place, both kubelet and crio create their mounts in the new shared (with eachother) but private (from systemd) namespace.
 
 ## References:
 
-mount_namespaces(7) unshare(1) systemd.exec(5)
+mount_namespaces(7) unshare(1) nsenter(1) systemd.exec(5)
+
+## Caveats:
+
+The contents of the original commands are copied out of OpenShift 4.6; It would be good to automate a way to make this download the current version from the current cluster so it always matches the actual services.
 
 # Usage
 
-Apply to all workers via:
+Frist, assemble all the overrides and such:
+
+    make
+
+Apply to all worker via:
 
     oc create -k worker
 
