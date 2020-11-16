@@ -1,0 +1,13 @@
+#!/bin/bash
+HOST=$1
+FILE=$2
+DEST=$3
+echo "Fetching $FILE from core@$HOST"
+ssh core@$HOST cat $FILE | \
+  python3 -c "import sys; import configparser; c = configparser.ConfigParser(strict=False); c.read_file(sys.stdin); print(c['Service']['ExecStart'])" \
+  > $DEST
+if [[ $? != 0 ]]; then
+  exit 1
+fi
+echo "Extracted ExecStart:"
+cat $DEST

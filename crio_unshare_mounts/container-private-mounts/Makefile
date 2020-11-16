@@ -1,13 +1,17 @@
 all: mc-crio-ns-override.yaml mc-kubelet-ns-override.yaml mc-container-mount-ns-service.yaml
 
-clean: mc-crio-ns-override.yaml mc-kubelet-ns-override.yaml mc-container-mount-ns-service.yaml crio-override.conf kubelet-override.conf
-	rm -f $^
+clean:
+	rm -f mc-crio-ns-override.yaml mc-kubelet-ns-override.yaml mc-container-mount-ns-service.yaml crio-override.conf kubelet-override.conf crio-execstart kubelet-execstart
 
 BASE64=/usr/bin/base64
 ENVSUB=/usr/bin/envsubst
 
-crio-override.conf: nsenter-template-override.conf crio-origcommand
-	ORIGCOMMAND=$$(<crio-origcommand) \
+crio-execstart: fetch-execstart
+	@[ $(HOST) ] || (echo "You need to set HOST= on your make commandline (ie: make HOST=cnfdc4)"; exit 1)
+	./fetch-execstart $(HOST) /usr/lib/systemd/system/crio.service $@
+
+crio-override.conf: nsenter-template-override.conf crio-execstart
+	ORIGCOMMAND=$$(<crio-execstart) \
 		$(ENVSUB) '$$ORIGCOMMAND' <$< >$@
 
 mc-crio-ns-override.yaml: mc-add-file-template.yaml crio-override.conf
@@ -16,8 +20,12 @@ mc-crio-ns-override.yaml: mc-add-file-template.yaml crio-override.conf
 		CONTENTS=$$($(BASE64) -w0 crio-override.conf) \
 		$(ENVSUB) '$$OBJNAME $$PATH $$CONTENTS' <$< >$@
 
-kubelet-override.conf: nsenter-template-override.conf kubelet-origcommand
-	ORIGCOMMAND=$$(<kubelet-origcommand) \
+kubelet-execstart: fetch-execstart
+	@[ $(HOST) ] || (echo "You need to set HOST= on your make commandline (ie: make HOST=cnfdc4)"; exit 1)
+	./fetch-execstart $(HOST) /etc/systemd/system/kubelet.service $@
+
+kubelet-override.conf: nsenter-template-override.conf kubelet-execstart
+	ORIGCOMMAND=$$(<kubelet-execstart) \
 		$(ENVSUB) '$$ORIGCOMMAND' <$< >$@
 
 mc-kubelet-ns-override.yaml: mc-add-file-template.yaml kubelet-override.conf
