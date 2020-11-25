@@ -1,42 +1,36 @@
-all: mc-crio-ns-override.yaml mc-kubelet-ns-override.yaml mc-container-mount-ns-service.yaml
+all: mc-container-mount-namespace.yaml
 
 clean:
-	rm -f mc-crio-ns-override.yaml mc-kubelet-ns-override.yaml mc-container-mount-ns-service.yaml crio-override.conf kubelet-override.conf crio-execstart kubelet-execstart
+	rm -f mc-crio-ns-override.yaml-fragment mc-kubelet-ns-override.yaml-fragment mc-container-mount-ns-service.yaml-fragment crio-override.conf kubelet-override.conf crio.execstart kubelet.execstart crio.service kubelet.service
 
 BASE64=/usr/bin/base64
 ENVSUB=/usr/bin/envsubst
 
-crio-execstart: fetch-execstart
+%.execstart: %.service
+	python3 -c "import sys; import configparser; c = configparser.ConfigParser(strict=False); c.read_file('$<'); print(c['Service']['ExecStart'])" >$@
+
+%-override.conf: %.execstart nsenter-template-override.conf
+	ORIGCOMMAND=$$(<$<) \
+		$(ENVSUB) '$$ORIGCOMMAND' <nsenter-template-override.conf >$@
+
+mc-%-ns-override.yaml-fragment: %-override.conf mc-add-file-template.yaml crio-override.conf
+	PATH=/etc/systemd/system/$*.service.d/override.conf \
+		CONTENTS=$$($(BASE64) -w0 $<) \
+		$(ENVSUB) '$$PATH $$CONTENTS' <mc-add-file-template.yaml >$@
+
+
+kubelet.service:
 	@[ $(HOST) ] || (echo "You need to set HOST= on your make commandline (ie: make HOST=cnfdc4)"; exit 1)
-	./fetch-execstart $(HOST) /usr/lib/systemd/system/crio.service $@
+	scp core@$(HOST):/etc/systemd/system/kubelet.service $@
 
-crio-override.conf: nsenter-template-override.conf crio-execstart
-	ORIGCOMMAND=$$(<crio-execstart) \
-		$(ENVSUB) '$$ORIGCOMMAND' <$< >$@
-
-mc-crio-ns-override.yaml: mc-add-file-template.yaml crio-override.conf
-	OBJNAME=crio-ns-override \
-		PATH=/etc/systemd/system/crio.service.d/override.conf \
-		CONTENTS=$$($(BASE64) -w0 crio-override.conf) \
-		$(ENVSUB) '$$OBJNAME $$PATH $$CONTENTS' <$< >$@
-
-kubelet-execstart: fetch-execstart
+crio.service:
 	@[ $(HOST) ] || (echo "You need to set HOST= on your make commandline (ie: make HOST=cnfdc4)"; exit 1)
-	./fetch-execstart $(HOST) /etc/systemd/system/kubelet.service $@
+	scp core@$(HOST):/usr/lib/systemd/system/crio.service $@
 
-kubelet-override.conf: nsenter-template-override.conf kubelet-execstart
-	ORIGCOMMAND=$$(<kubelet-execstart) \
-		$(ENVSUB) '$$ORIGCOMMAND' <$< >$@
-
-mc-kubelet-ns-override.yaml: mc-add-file-template.yaml kubelet-override.conf
-	OBJNAME=kubelet-ns-override \
-		PATH=/etc/systemd/system/kubelet.service.d/override.conf \
-		CONTENTS=$$($(BASE64) -w0 kubelet-override.conf) \
-		$(ENVSUB) '$$OBJNAME $$PATH $$CONTENTS' <$< >$@
-
-mc-container-mount-ns-service.yaml: mc-add-file-template.yaml container-mount-namespace.service
-	OBJNAME=container-mount-ns-service \
-		PATH=/etc/systemd/system/container-mount-namespace.service \
+mc-container-mount-ns-service.yaml-fragment: mc-add-file-template.yaml container-mount-namespace.service
+	PATH=/etc/systemd/system/container-mount-namespace.service \
 		CONTENTS=$$($(BASE64) -w0 ./container-mount-namespace.service) \
-		$(ENVSUB) '$$OBJNAME $$PATH $$CONTENTS' <$< >$@
+		$(ENVSUB) '$$PATH $$CONTENTS' <$< >$@
 
+mc-container-mount-namespace.yaml: mc-container-mount-namespace-template.yaml mc-container-mount-ns-service.yaml-fragment mc-crio-ns-override.yaml-fragment mc-kubelet-ns-override.yaml-fragment
+	cat $^ > $@
