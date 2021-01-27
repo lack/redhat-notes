@@ -1,6 +1,1 @@
-crio.service
-kubelet.service
-*.execstart
-*-override.conf
-*.yaml-fragment
-mc-container-mount-namespace.yaml
+*-fragment.yaml
