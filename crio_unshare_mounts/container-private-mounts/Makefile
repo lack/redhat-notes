@@ -7,7 +7,7 @@ BASE64=/usr/bin/base64
 ENVSUB=/usr/bin/envsubst
 
 %.execstart: %.service
-	python3 -c "import sys; import configparser; c = configparser.ConfigParser(strict=False); c.read('$<'); print(c['Service']['ExecStart'])" >$@
+	sed -n -f extractExecStart.sed $< >$@
 
 %-override.conf: %.execstart nsenter-template-override.conf
 	ORIGCOMMAND=$$(<$<) \
