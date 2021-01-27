@@ -5,6 +5,7 @@ Thse machine config additions create a new mount namespace and causes both crio 
 It does so by creating:
  - A service called container-mount-namespace.service which spawns a separate 'slave' mount namespace (via unshare) and pins it in a well-known location `/run/container-mount-namespace/mnt`
  - An override file for each of crio.service and kubelet.service which wrap the original command under 'nsenter' so they both join the mount namespace created by 'container-mount-namespace.service'
+ - A convenience utility `/usr/local/bin/nsenterCms` for administrators or external utilities to easily enter this namespace
 
 With this in place, both kubelet and crio create their mounts in the new shared (with eachother) but private (from systemd) namespace.
 
