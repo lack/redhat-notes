@@ -6,5 +6,3 @@ spec:
   config:
     ignition:
       version: 3.1.0
-    storage:
-      files:

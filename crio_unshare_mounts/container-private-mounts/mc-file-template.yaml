@@ -1,0 +1,5 @@
+      - path: $PATH
+        filesystem: root
+        mode: $MODE
+        contents:
+          source: data:text/plain;charset=utf8;base64,$CONTENTS

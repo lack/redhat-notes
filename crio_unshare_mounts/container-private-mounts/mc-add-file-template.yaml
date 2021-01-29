@@ -1,5 +1,0 @@
-      - contents:
-          source: data:text/plain;charset=utf8;base64,$CONTENTS
-        filesystem: root
-        mode: $MODE
-        path: $PATH
