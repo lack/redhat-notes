@@ -14,7 +14,7 @@ It does so by creating:
    of `crio.service` and `kubelet.service` which wrap the startup commands so
    they both join the mount namespace created by
    `container-mount-namespace.service`
- - A convenience utility `/usr/local/bin/nsenterCms` for administrators or
+ - A convenience utility `/usr/local/bin/nsenterCmns` for administrators or
    external utilities to easily enter this namespace
 
 With this in place, both Kubelet and CRI-O create their mounts in the new

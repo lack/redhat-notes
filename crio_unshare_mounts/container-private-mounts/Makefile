@@ -20,7 +20,7 @@ mc-%-tool-fragment.yaml: % mc-file-template.yaml
 	PATH=/usr/local/bin/$* MODE=$$(printf "%d" 0755) CONTENTS=$$($(BASE64) $<) \
 		$(ENVSUB) '$$PATH $$MODE $$CONTENTS' <mc-file-template.yaml >$@
 
-mc-files-fragment.yaml: mc-files-section-header.yaml mc-extractExecStart-tool-fragment.yaml mc-nsenterCms-tool-fragment.yaml
+mc-files-fragment.yaml: mc-files-section-header.yaml mc-extractExecStart-tool-fragment.yaml mc-nsenterCmns-tool-fragment.yaml
 	cat $^ >$@
 
 mc-systemd-fragment.yaml: mc-systemd-section-header.yaml mc-container-mount-ns-service-fragment.yaml mc-crio-ns-override-fragment.yaml mc-kubelet-ns-override-fragment.yaml
