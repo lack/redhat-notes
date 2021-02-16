@@ -32,11 +32,15 @@ and Kubelet.
 
 ## OpenShift via MCO
 
-Apply to all workers via:
+Apply to all nodes via:
+
+    oc create -k .
+
+Or apply to only workers via:
 
     oc create -k worker
 
-Apply to all masters via:
+Or only masters via:
 
     oc create -k master
 
