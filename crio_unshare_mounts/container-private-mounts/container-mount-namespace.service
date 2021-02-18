@@ -9,5 +9,5 @@ Environment=RUNTIME_DIRECTORY=%t/container-mount-namespace
 Environment=BIND_POINT=%t/container-mount-namespace/mnt
 ExecStartPre=bash -c "findmnt ${RUNTIME_DIRECTORY} || mount --make-unbindable --bind ${RUNTIME_DIRECTORY} ${RUNTIME_DIRECTORY}"
 ExecStartPre=touch ${BIND_POINT}
-ExecStart=unshare --mount=${BIND_POINT} --propagation slave
+ExecStart=unshare --mount=${BIND_POINT} --propagation slave mount --make-rshared /
 ExecStop=umount -R ${RUNTIME_DIRECTORY}
