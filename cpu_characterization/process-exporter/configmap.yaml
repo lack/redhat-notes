@@ -8,4 +8,6 @@ data:
     process_names:
       - comm:
         - systemd
+        cmdline:
+        - --system
       - ppid: 1

@@ -5,13 +5,13 @@ adds per-process statistics to prometheus, but doesn't afford an easy way to
 differentiate pod processes from non-pod processes, which we would like.
 
 The first attempt at finding a way around this involves adding the ability to
-filter processes in process-exporter by parent PID (work done
-[here](https://github.com/lack/process-exporter/tree/parent-matching)), and
-then setting up a config file to group all processes which have a PPID == 1,
-meaning all top-level processes on the machine get grouped (and all lower-level
-children get grouped in with their parents). With this in place, we know that
-all pods will be in the groupname "conmon", and everything else are non-pod
-processes.
+filter processes in process-exporter by parent PID and better thread accounting
+(work done [here](https://github.com/lack/process-exporter/tree/all_threads)),
+and then setting up a config file to group all processes which have a PPID ==
+1, meaning all top-level processes on the machine get grouped (and all
+lower-level children get grouped in with their parents). With this in place, we
+know that all pods will be in the groupname "conmon", and everything else are
+non-pod processes.
 
 The objects in process-exporter wrap a custom build of the PPID-filtwering
 process-exporter with proper prometheus config to bring it all together.

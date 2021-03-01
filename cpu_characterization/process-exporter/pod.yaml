@@ -11,7 +11,7 @@ spec:
   - args:
     - -config.path
     - /config/config.yml
-    image: quay.io/jramsay/process-exporter:ppid-1
+    image: quay.io/jramsay/process-exporter:ppid-2
     imagePullPolicy: IfNotPresent
     name: process-exporter
     resources:
