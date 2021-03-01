@@ -18,23 +18,31 @@ process-exporter with proper prometheus config to bring it all together.
 
 ## Example Prometheus Filters
 
+General notes:
+
+- We use `sum without(mode)` because process-exporter splits user CPU time and
+  system CPU time into 2 separate counters, and this adds them into a single
+  counter per process.
+
+- We use `rate` because CPU is calculated in CPU seconds (an increasing
+  counter).  The nice thing is that calculating the rate of "CPU seconds per
+  second" ends up with the same metric as the main OpenShift monitoring like
+  `pod:container_cpu_usage:sum`.  A value of "1" means we used 1s of CPU for
+  every second we ran, or 100% of one core.
+
 High-level CPU usage for all non-pod processes:
 
-    sum without(mode,namespace,pod,service,container,job,instance,endpoint) (rate(namedprocess_namegroup_cpu_seconds_total{groupname!~"conmon.*"}[1m]))
+    sum without(mode) (rate(namedprocess_namegroup_cpu_seconds_total{groupname!~"conmon.*"}[1m]))
 
 The same, but splitting out all threads and sub-processes:
 
-    sum without(mode,namespace,pod,service,container,job,instance,endpoint) (rate(namedprocess_namegroup_thread_cpu_seconds_total{groupname!~"conmon.*"}[1m]))
+    sum without(mode) (rate(namedprocess_namegroup_thread_cpu_seconds_total{groupname!~"conmon.*"}[1m]))
 
 All threads and sub-processes including pods:
 
-    sum without(mode,namespace,pod,service,container,job,instance,endpoint) (rate(namedprocess_namegroup_thread_cpu_seconds_total[1m]))
+    sum without(mode) (rate(namedprocess_namegroup_thread_cpu_seconds_total[1m]))
 
 ## TODO
 - Cleaner packaging
-- Figure out the scale and units so we can directly compare to other
-  pre-existing metrics like `pod:container_cpu_usage:sum`
-- Clean up the labels that get put into the process-exporter metrics, since
-  most are useless
 - Maybe adapt process-exporter to do more container-gnostic filtering, perhaps
   based on cgroup filtering?
