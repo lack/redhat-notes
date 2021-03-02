@@ -4,6 +4,13 @@ These [MCO](https://github.com/openshift/machine-config-operator) additions
 create a new mount namespace and causes both CRI-O and Kubelet to launch within
 it to hide their many many mounts from systemd.
 
+## Rationale
+
+This is in support of decreased CPU utilization by systemd; see
+[Rationale.md](Rationale.md) for a more in-depth discussion of the motivations.
+
+## Mechanism
+
 It does so by creating:
  - A service called
    [container-mount-namespace.service](container-private-mounts/container-mount-namespace.service)
