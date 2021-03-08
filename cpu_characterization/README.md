@@ -42,6 +42,18 @@ All threads and sub-processes including pods:
 
     sum without(mode) (rate(namedprocess_namegroup_thread_cpu_seconds_total[1m]))
 
+# Overhead
+
+With the prometheus instance set up to scrape the metrics every 15s, the
+process-exporter seems to set at around 0.50 of one CPU, and the additional
+load on prometheus itself is negligible.
+
+[This diagram](images/process-exporter-and-prometheus-CPU.png) shows a period
+of time when process-exporter's pod is deleted, then when the pod is present
+but the prometheus scraping is disabled (by temporarily deleting the
+servicemonitor), then steady-state operation.  The avg prometheus instance CPU
+is basically unchanged throughout.
+
 ## TODO
 - Cleaner packaging
 - Maybe adapt process-exporter to do more container-gnostic filtering, perhaps
