@@ -69,6 +69,17 @@ Sum all the infrastructure pods and OS processes into a single number:
 
     sum(avg_over_time(namedprocess_namegroup_thread_cpu_rate{threadname!~"process-exp.*"}[10m]))
 
+# Scraping Data Out
+
+I have an example script, [prometheus-csv](./prometheus-csv), which will
+contact a given cluster over the metrics interface, gather the average CPU,
+max CPU, and min CPU over the time period specified, and produce csv output.
+This intentionally excludes the 'process-exporter' pod itself, but does
+include every Host OS process gathered by the process-exporter pod, plus all
+the other pods on the system.  If you're running CPU-intensive workloads, it
+should be easy to adapt the script to exclude those from the accounting by
+filtering on namespace or something.
+
 # Overhead
 
 With the prometheus instance set up to scrape the metrics every 15s, the
