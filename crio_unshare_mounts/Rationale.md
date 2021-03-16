@@ -34,19 +34,33 @@ _Fig 2: Proposed support for hidden mount propagation_
 
 ## Systemd Efficiency
 
-Today systemd is adversely affected by a large number of mount points. This
-appears to be rooted in the lack of granularity in the events the kernel sends
-to systemd about mountpoint changes, which necessitates a full rescan of all
-mountpoints even on a minor change or single mountpoint addition.  (See
+Today systemd's CPU usage is adversely affected by a large number of
+mountpoints, especially versions released prior to December 2020. This feature
+of systemd, which scans all /proc/1/mount to invoke udev events for every
+change suffers from two issues. The first was an inefficiency in systemd’s
+processing logic. This was fixed in December 2020, and this fix reportedly
+reduced the systemd mount-scanning-related overhead by 30-50%. The second is a
+lack of granularity in the events the kernel sends to systemd about mountpoint
+changes, which necessitates a full rescan of all mountpoints even on a minor
+change or single mountpoint addition. The kernel change to remedy this seems
+unlikely to move forward in the near term.  (See
 [BZ1819869](https://bugzilla.redhat.com/show_bug.cgi?id=1819868) for more
 details)
 
-Even a fairly small OpenShift deployment today has upwards of 400 mountpoints
-on every node owned by Kubelet, the Container Runtime, and infrastructure
-containers like OVN or CSI operators. Hiding the container mount points reduces
-the steady-state systemd CPU utilization from ~10% to ~0% on every worker node,
-and the improvement would be greater on more heavily-loaded systems with more
-container-specific mountpoints.
+For example, a fairly small OpenShift deployment today (which does not yet have
+the systemd December 2020 fix) has upwards of 400 mountpoints on every node
+owned by Kubelet, the Container Runtime, and infrastructure containers like OVN
+or CSI operators. Hiding the container mountpoints reduces the steady-state
+systemd CPU utilization from ~10% to ~0% on every worker node. On a more
+heavily loaded system, with 1000’s of container mountpoints, systemd’s usage
+will cap out at 100% of a single CPU core. Even with the 30-50% reduction in
+systemd usage expected from the December 2020 fix, having systemd take up as
+much as 50-70% of a single CPU in the worst-case scenario is a lot of
+unnecessary overhead.
+
+Administrators of other OSes with other host OS services that monitor or
+process mountpoints indiscriminately would be able to hide these
+container-specific mountpoints from the OS at large, at their option.
 
 ## Tidiness and Encapsulation
 
@@ -66,6 +80,26 @@ secrets or other protected container mount contents. Locking access to even
 listing the mountpoints behind the ability to enter the mount namespace (which
 in turn requires `CAP_SYS_CHROOT` and `CAP_SYS_ADMIN`) removes one level of
 potential access to container-specific mounts.
+
+## No one uses it (that we know of)
+
+After much investigation and conversation on both the sig-node and sig-storage
+mailing lists, as well as within Red Hat's OpenShift communities, we have yet
+to turn up a use case that relies on this container-to-host propagation.
+
+## No one should use it
+
+In fact, it may be seen as an anti-pattern and run contrary to the
+container-native way of doing things. Relying on a host OS to interact with a
+container-owned mountpoint seems suspect.
+
+## Testing implications
+
+With this requirement relaxed, it would be possible to run multiple instances
+of Kubernetes on a single host without the various mountpoints interfering with
+one another. There may be other inter-instance difficulties besides the mount
+namespace, but this does move in that direction without resorting to more
+complicated solutions like trying to run Kubernetes inside of containers.
 
 # What exactly would change
 
