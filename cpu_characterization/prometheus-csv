@@ -88,6 +88,21 @@ def multicollect(prometheus, metric_set, functions, interval=None, time=None):
     return join_metrics({name: collect_metrics(prometheus, metric_set, fn=fn, interval=interval, time=time) for name, fn in functions.items()})
 
 
+def filtered_metric(base_metric, *filters):
+    result = base_metric
+    validFilters = list(f for f in filters if f is not None and len(f) > 0)
+    if len(validFilters) > 0:
+        result += '{' + ",".join(validFilters) + '}'
+    return result
+
+
+def filter_out(labelname, *patterns):
+    result = None
+    validPatterns = list(p for p in patterns if p is not None and len(p) > 0)
+    if len(validPatterns) > 0:
+        result = f"{labelname}!~\"{'|'.join(validPatterns)}\""
+    return result
+
 host = None
 token = None
 if len(sys.argv) > 1:
@@ -100,16 +115,26 @@ if len(sys.argv) > 3:
 time = None
 if len(sys.argv) > 4:
     time = sys.argv[4]
+skip_namespaces = ()
+if len(sys.argv) > 5:
+    skip_namespaces = sys.argv[5:]
 if not host and not token or host in ("-h", "--help"):
-    print(f"Usage: {sys.argv[0]} host token [interval] [timestamp]")
+    print(f"Usage: {sys.argv[0]} host token [interval] [timestamp] [skip_namespaces...]")
     print("""
 Compute the average, min, and max values over the given interval ending at the given timestamp, and return a CSV representation
 
-If not specified, interval defaults to 1h and timestamp defaults to now""")
+If not specified, interval defaults to 1h and timestamp defaults to now
+
+By default, skips any pod named "process-exp.*" to exclude the process-exporter itself
+Adding additional skip_namespaces will also exclude any pods that match from the pod CPU usage accounting, so we can exclude workloads if required
+""")
     sys.exit(1)
 
 prometheus = Prometheus(host, token)
-metric_set = ['namedprocess_namegroup_cpu_rate{groupname!~"conmon"}', 'pod:container_cpu_usage:sum{pod!~"process-exp.*"}']
+metric_set = [
+    filtered_metric("namedprocess_namegroup_cpu_rate", filter_out("groupname", "conmon")),
+    filtered_metric("pod:container_cpu_usage:sum", filter_out("podname", "process-exp.*"), filter_out("namespace", *skip_namespaces))
+]
 combined_metrics = multicollect(prometheus, metric_set, {
     f'avg over {interval}': lambda metric, interval: f"avg_over_time({metric}[{interval}])",
     f'min over {interval}': lambda metric, interval: f"min_over_time({metric}[{interval}])",
