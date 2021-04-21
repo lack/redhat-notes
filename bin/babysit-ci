@@ -1,0 +1,171 @@
+#!/bin/bash
+
+usage() {
+    echo "Usage: $0 [--retest] watchlist"
+    echo
+    echo "Watchlist must be a file containing one repository per line"
+    echo
+    echo "Each repository must be one of:"
+    echo "  - A local directory path (in which case we will babysit the PR"
+    echo "    corresponding to the current branch)"
+    echo "  - A URI to a github pull request"
+    echo
+    echo "Options:"
+    echo "  --retest   If the CI lane is failing, add a '/retest' comment"
+    echo
+    exit 1
+}
+
+retest=
+if [[ $1 = "--retest" ]]; then
+    retest="yes"
+    shift
+elif [[ $1 = "-h" || $1 = "--help" ]]; then
+    usage
+fi
+
+if [[ ! -f $1 ]]; then
+    echo "No such file \"$1\""
+    echo
+    usage
+fi
+watchlistFile=$1
+
+if ! hash gh 2>/dev/null; then
+    echo "You need the Github CLI tool 'gh' installed"
+    echo "See https://cli.github.com/ for details"
+    exit 1
+fi
+
+if !gh auth status &>/dev/null; then
+    echo "You need to be authenticated against github"
+    echo "Run 'gh auth --help' for details"
+    exit 1
+fi
+
+failingPRs=()
+pendingPRs=()
+waitingPRs=()
+readyPRs=()
+closedPRs=()
+mergedPRs=()
+needsApprovalPRs=()
+
+checkpr() {
+    local what=$1
+    local localdir=
+    local uri=
+    echo
+    if [[ -d $what ]]; then
+        localdir=$what
+        pushd $what &>/dev/null
+        echo "Local repo $what"
+    else
+        uri=$what
+        echo $uri
+    fi
+
+    local prinfo=$(gh pr view $uri)
+    local state=$(awk '/^state:/ {print $2}' <<<$prinfo)
+    case $state in
+        CLOSED)
+            echo "  Closed!"
+            closedPRs+=($what)
+            return 0
+            ;;
+        MERGED)
+            echo "  Merged!"
+            mergedPRs+=($what)
+            return 0
+            ;;
+    esac
+
+    local labels=$(grep '^labels:' <<<$prinfo)
+    local lgtm=
+    grep -q 'lgtm' <<<$labels && lgtm=1
+    local approved=
+    grep -q 'approved' <<<$labels && approved=1
+
+    local fail=()
+    local pending=0
+    local pass=0
+    local tide=""
+    while read name result x details; do
+        if [[ $name = "tide" ]]; then
+            tide=$result
+            continue
+        fi
+        case $result in
+        fail)
+            fail+=($name)
+            ;;
+        pending)
+            ((pending++))
+            ;;
+        pass)
+            ((pass++))
+            ;;
+        esac
+    done < <(gh pr checks $uri)
+    echo -n "  "
+    if [[ $pending -gt 0 ]]; then
+        pendingPRs+=($what)
+        echo "Running ($pending running, $pass passed, ${#fail[@]} failed)"
+    elif [[ ${#fail[@]} -gt 0 ]]; then
+        failingPRs+=($what)
+        echo "Failed: ${fail[@]}"
+        if [[ $retest ]]; then
+            newComment=$(gh pr comment $uri --body "/retest")
+            echo "  * Asked for /retest again"
+        fi
+    elif [[ $pass -gt 0 ]]; then
+        echo "CI Okay!"
+        if [[ $lgtm && $approved ]]; then
+            readyPRs+=($what)
+        else
+            needsApprovalPRs+=($what)
+        fi
+    else
+        waitingPRs+=($what)
+        echo "Waiting on Ok-to-test"
+    fi
+
+    echo -n "  "
+    if [[ $lgtm && $approved ]]; then
+        echo "Approvals Complete!"
+    else
+        if [[ $approved ]]; then
+            echo "Needs /lgtm"
+        elif [[ $lgtm ]]; then
+            echo "Needs /approved"
+        else
+            echo "Needs /lgtm and /approved"
+        fi
+    fi
+
+    if [[ $localdir ]]; then
+        popd &>/dev/null
+    fi
+}
+
+watchlist=$(<$watchlistFile)
+total=0
+echo -n "Checking PRs starting at "
+date
+for pr in $watchlist; do
+    checkpr $pr
+    ((total++))
+done
+echo
+echo "$total PRs total:"
+echo "  ${#mergedPRs[@]} merged"
+echo "  ${#closedPRs[@]} closed"
+githubTotal=$(( total - ${#mergedPRs[@]} - ${#closedPRs[@]} ))
+echo "  $githubTotal somewhere in github:"
+echo "    ${#readyPRs[@]} ready but not merged (probably because of a /hold)"
+echo "    ${#needsApprovalPRs[@]} need approval"
+ciTotal=$(( ${#pendingPRs[@]} + ${#failingPRs[@]} + ${#waitingPRs[@]} ))
+echo "    $ciTotal don't have CI completed yet:"
+echo "      ${#pendingPRs[@]} running CI jobs"
+echo "      ${#failingPRs[@]} failing CI jobs"
+echo "      ${#waitingPRs[@]} waiting on ok-to-test"
