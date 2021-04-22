@@ -55,7 +55,9 @@ waitingPRs=()
 readyPRs=()
 closedPRs=()
 mergedPRs=()
+
 needsApprovalPRs=()
+approvedPRs=()
 
 checkpr() {
     local what=$1
@@ -146,8 +148,9 @@ checkpr() {
             failingPRs+=($what)
             ;;
         ok)
+            readyPRs+=($what)
             if [[ $lgtm && $approved ]]; then
-                readyPRs+=($what)
+                approvedPRs+=($what)
             else
                 needsApprovalPRs+=($what)
             fi
@@ -184,15 +187,14 @@ for pr in $watchlist; do
     ((total++))
 done
 echo
-echo "$total PRs total:"
-echo "  ${#mergedPRs[@]} merged"
-echo "  ${#closedPRs[@]} closed"
-githubTotal=$(( total - ${#mergedPRs[@]} - ${#closedPRs[@]} ))
-echo "  $githubTotal somewhere in github:"
-echo "    ${#readyPRs[@]} ready but not merged (probably because of a /hold)"
-echo "    ${#needsApprovalPRs[@]} need approval"
-ciTotal=$(( ${#pendingPRs[@]} + ${#failingPRs[@]} + ${#waitingPRs[@]} ))
-echo "    $ciTotal don't have CI completed yet:"
-echo "      ${#pendingPRs[@]} running CI jobs"
-echo "      ${#failingPRs[@]} failing CI jobs"
-echo "      ${#waitingPRs[@]} waiting on ok-to-test"
+printf "%3d PRs total:\n" $total
+printf "    %3d merged\n" ${#mergedPRs[@]}
+printf "    %3d closed\n" ${#closedPRs[@]}
+printf "    %3d somewhere in github:\n" $(( total - ${#mergedPRs[@]} - ${#closedPRs[@]} ))
+printf "        %3d have completed the CI gauntlet:\n" ${#readyPRs[@]}
+printf "            %3d on hold but fully approved\n" ${#approvedPRs[@]}
+printf "            %3d need approval\n" ${#needsApprovalPRs[@]}
+printf "        %3d don't have CI completed yet:\n" $(( ${#pendingPRs[@]} + ${#failingPRs[@]} + ${#waitingPRs[@]} ))
+printf "            %3d running CI jobs\n" ${#pendingPRs[@]}
+printf "            %3d failing CI jobs\n" ${#failingPRs[@]}
+printf "            %3d waiting on ok-to-test\n" ${#waitingPRs[@]}
