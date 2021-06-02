@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rekey-tpm2
+  namespace: openshift-machine-config-operator
+spec:
+  template:
+    metadata:
+      labels:
+        name: rekey-tpm2
+    spec:
+      containers:
+      - name: rekey-tpm2
+        image: quay.io/centos/centos:8
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/sbin/chroot"
+        - "/host"
+        - "/bin/bash"
+        - "-ec"
+        args: 
+        - |
+          echo "Current tang pin:"
+          clevis-luks-list -d /dev/sda4 -s 1
+          echo "Applying new tang pin: $NEW_TANG_PIN"
+          clevis-luks-edit -f -d /dev/sda4 -s 1 -c "$NEW_TANG_PIN"
+          echo "Pin applied successfully"
+        env:
+        - name: NEW_TANG_PIN
+          value: >-
+            {"t":1,"pins":{"tpm2":[{}]}}
+        volumeMounts:
+        - name: hostroot
+          mountPath: /host
+        securityContext:
+          privileged: true
+      volumes:
+      - name: hostroot
+        hostPath:
+          path: /
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Never
+      serviceAccount: machine-config-daemon
+      serviceAccountName: machine-config-daemon

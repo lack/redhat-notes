@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rekey-tpm2-plus-tang
+  namespace: openshift-machine-config-operator
+spec:
+  template:
+    metadata:
+      labels:
+        name: rekey-tpm2-plus-tang
+    spec:
+      containers:
+      - name: rekey-tpm2-plus-tang
+        image: quay.io/centos/centos:8
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/sbin/chroot"
+        - "/host"
+        - "/bin/bash"
+        - "-ec"
+        args: 
+        - |
+          echo "Current tang pin:"
+          clevis-luks-list -d /dev/sda4 -s 1
+          echo "Applying new tang pin: $NEW_TANG_PIN"
+          clevis-luks-edit -f -d /dev/sda4 -s 1 -c "$NEW_TANG_PIN"
+          echo "Pin applied successfully"
+        env:
+        - name: NEW_TANG_PIN
+          value: >-
+            {"t":2,"pins":{
+              "tpm2": [{}],
+              "sss":[{"t":1,"pins":{"tang":[
+                {"url":"http://10.46.55.192:7500","thp":"aweILXiRhPQoVUP37pwUA5RFThM"},
+                {"url":"http://10.46.55.192:7501","thp":"I5Ynh2JefoAO3tNH9TgI4obIaXI"},
+                {"url":"http://10.46.55.192:7502","thp":"38qWZVeDKzCPG9pHLqKzs6k1ons"}
+              ]}}]
+            }}
+        volumeMounts:
+        - name: hostroot
+          mountPath: /host
+        securityContext:
+          privileged: true
+      volumes:
+      - name: hostroot
+        hostPath:
+          path: /
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Never
+      serviceAccount: machine-config-daemon
+      serviceAccountName: machine-config-daemon
