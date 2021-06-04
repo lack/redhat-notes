@@ -1,16 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rekey-tpm2
+  name: rekey-tpm2-plus-tang
   namespace: openshift-machine-config-operator
 spec:
   template:
     metadata:
       labels:
-        name: rekey-tpm2
+        name: rekey-tpm2-plus-tang
     spec:
       containers:
-      - name: rekey-tpm2
+      - name: rekey-tpm2-plus-tang
         image: quay.io/centos/centos:8
         imagePullPolicy: IfNotPresent
         command:
@@ -28,7 +28,14 @@ spec:
         env:
         - name: NEW_TANG_PIN
           value: >-
-            {"t":1,"pins":{"tpm2":[{}]}}
+            {"t":2,"pins":{
+              "tpm2":[{}],
+              "sss":[{"t":1,"pins":{"tang":[
+                {"url":"http://10.46.55.192:7500","thp":"aweILXiRhPQoVUP37pwUA5RFThM"},
+                {"url":"http://10.46.55.192:7501","thp":"I5Ynh2JefoAO3tNH9TgI4obIaXI"},
+                {"url":"http://10.46.55.192:7502","thp":"38qWZVeDKzCPG9pHLqKzs6k1ons"}
+              ]}}]
+            }}
         volumeMounts:
         - name: hostroot
           mountPath: /host

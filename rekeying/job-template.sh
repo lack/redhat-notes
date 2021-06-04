@@ -1,19 +1,19 @@
-apiVersion: apps/v1
-kind: DaemonSet
+#!/bin/bash
+
+cat <<EOF
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: tang-rekey-01
+  name: $NAME
   namespace: openshift-machine-config-operator
 spec:
-  selector:
-    matchLabels:
-      name: tang-rekey-01
   template:
     metadata:
       labels:
-        name: tang-rekey-01
+        name: $NAME
     spec:
       containers:
-      - name: tang-rekey-01
+      - name: $NAME
         image: quay.io/centos/centos:8
         imagePullPolicy: IfNotPresent
         command:
@@ -21,25 +21,17 @@ spec:
         - "/host"
         - "/bin/bash"
         - "-ec"
-        args: 
+        args:
         - |
           echo "Current tang pin:"
           clevis-luks-list -d /dev/sda4 -s 1
-          echo "Applying new tang pin: $NEW_TANG_PIN"
-          clevis-luks-edit -f -d /dev/sda4 -s 1 -c "$NEW_TANG_PIN"
+          echo "Applying new tang pin: \$NEW_TANG_PIN"
+          clevis-luks-edit -f -d /dev/sda4 -s 1 -c "\$NEW_TANG_PIN"
           echo "Pin applied successfully"
-          sleep infinity
         env:
         - name: NEW_TANG_PIN
           value: >-
-            {"t":2,"pins":{
-              "tpm2": [{}],
-              "sss":[{"t":1,"pins":{"tang":[
-                {"url":"http://10.46.55.192:7500","thp":"aweILXiRhPQoVUP37pwUA5RFThM"},
-                {"url":"http://10.46.55.192:7501","thp":"I5Ynh2JefoAO3tNH9TgI4obIaXI"},
-                {"url":"http://10.46.55.192:7502","thp":"38qWZVeDKzCPG9pHLqKzs6k1ons"}
-              ]}}]
-            }}
+$(pr -to 12 <<<"$PIN")
         volumeMounts:
         - name: hostroot
           mountPath: /host
@@ -52,6 +44,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-node-critical
-      restartPolicy: Always
+      restartPolicy: Never
       serviceAccount: machine-config-daemon
       serviceAccountName: machine-config-daemon
+EOF

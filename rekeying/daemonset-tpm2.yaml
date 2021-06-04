@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: tang-rekey-01
+  name: rekey-tpm2
   namespace: openshift-machine-config-operator
 spec:
   selector:
     matchLabels:
-      name: tang-rekey-01
+      name: rekey-tpm2
   template:
     metadata:
       labels:
-        name: tang-rekey-01
+        name: rekey-tpm2
     spec:
       containers:
-      - name: tang-rekey-01
+      - name: rekey-tpm2
         image: quay.io/centos/centos:8
         imagePullPolicy: IfNotPresent
         command:
@@ -21,14 +21,23 @@ spec:
         - "/host"
         - "/bin/bash"
         - "-ec"
-        args: 
+        args:
         - |
+          rm -f /tmp/rekey-complete || true
           echo "Current tang pin:"
           clevis-luks-list -d /dev/sda4 -s 1
           echo "Applying new tang pin: $NEW_TANG_PIN"
           clevis-luks-edit -f -d /dev/sda4 -s 1 -c "$NEW_TANG_PIN"
           echo "Pin applied successfully"
+          touch /tmp/rekey-complete
           sleep infinity
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /host/tmp/rekey-complete
+          initialDelaySeconds: 30
+          periodSeconds: 10
         env:
         - name: NEW_TANG_PIN
           value: >-

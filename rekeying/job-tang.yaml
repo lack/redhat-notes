@@ -18,7 +18,7 @@ spec:
         - "/host"
         - "/bin/bash"
         - "-ec"
-        args: 
+        args:
         - |
           echo "Current tang pin:"
           clevis-luks-list -d /dev/sda4 -s 1
