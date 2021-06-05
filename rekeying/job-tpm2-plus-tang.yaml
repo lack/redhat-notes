@@ -31,9 +31,9 @@ spec:
             {"t":2,"pins":{
               "tpm2":[{}],
               "sss":[{"t":1,"pins":{"tang":[
-                {"url":"http://10.46.55.192:7500","thp":"aweILXiRhPQoVUP37pwUA5RFThM"},
-                {"url":"http://10.46.55.192:7501","thp":"I5Ynh2JefoAO3tNH9TgI4obIaXI"},
-                {"url":"http://10.46.55.192:7502","thp":"38qWZVeDKzCPG9pHLqKzs6k1ons"}
+                {"url":"http://tangserver02:7500","thp":"tang-thumbprint-2"},
+                {"url":"http://tangserver01:7500","thp":"tang-thumbprint-1"},
+                {"url":"http://tangserver03:7500","thp":"tang-thumbprint-3"}
               ]}}]
             }}
         volumeMounts:
