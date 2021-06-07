@@ -28,9 +28,9 @@ spec:
         - |
           rm -f /tmp/rekey-complete || true
           echo "Current tang pin:"
-          clevis-luks-list -d /dev/sda4 -s 1
+          clevis-luks-list -d \$ROOT_DEV -s 1
           echo "Applying new tang pin: \$NEW_TANG_PIN"
-          clevis-luks-edit -f -d /dev/sda4 -s 1 -c "\$NEW_TANG_PIN"
+          clevis-luks-edit -f -d \$ROOT_DEV -s 1 -c "\$NEW_TANG_PIN"
           echo "Pin applied successfully"
           touch /tmp/rekey-complete
           sleep infinity
@@ -42,6 +42,8 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 10
         env:
+        - name: ROOT_DEV
+          value: /dev/sda4
         - name: NEW_TANG_PIN
           value: >-
 $(pr -to 12 <<<"$PIN")
