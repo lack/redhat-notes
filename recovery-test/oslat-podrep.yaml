@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: oslat-replicas
+spec:
+  replicas: 2
+  selector: 
+    name: oslat-workload
+  template:
+    #apiVersion: v1
+    #kind: Pod
+    metadata:
+      name: oslat
+      namespace: default
+      labels:
+        name: oslat-workload
+      annotations:
+        # Disable CPU balance with CRIO
+        cpu-load-balancing.crio.io: "true"
+        cpu-quota.crio.io: "true"
+    spec:
+      # Map to the correct performance class
+      runtimeClassName: performance-perfprofile-policy
+      restartPolicy: Always
+      # Force to fetch latest test  image
+      imagePullPolicy: Always
+      containers:
+      - name: container-perf-tools
+        image: quay.io/jianzzha/oslat
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "6"
+          limits:
+            memory: "2Gi"
+            cpu: "6"
+        env:
+        - name: tool
+          value: "oslat"
+        - name: RUNTIME_SECONDS
+          value: "1440m"
+        - name: INITIAL_DELAY_SEC
+          value: "30"
+        - name: RTPRIO
+          value: "1"
+        - name: delay
+          value: "60"
+        - name: manual
+          value: "n"
+        # cyclictest requires privileged=true
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /dev/cpu_dma_latency
+          name: cstate
+      volumes:
+      - name: cstate
+        hostPath:
+          path: /dev/cpu_dma_latency

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: stress-ng-replicas
+spec:
+  replicas: 8  
+  selector:    
+    name: stress-ng-workload
+  template:    
+    # apiVersion: v1
+    # kind: Pod
+    metadata:
+      name: stress-ng
+      namespace: default
+      labels:
+        name: stress-ng-workload
+    spec:
+      containers:
+        - image: quay.io/imiller/stress-ng:2.0
+          env:
+          - name: INITIAL_DELAY_SEC
+            value: "60"
+          resources:
+            limits:
+              cpu: 2
+              memory: 100M
+            requests:
+              cpu: 2
+              memory: 100M
+          imagePullPolicy: IfNotPresent
+          name: stress-ng

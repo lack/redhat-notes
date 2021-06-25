@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: bursty-replicas
+spec:
+  replicas: 10
+  selector:
+    name: bursty-workload
+  template:
+    #apiVersion: v1
+    #kind: Pod
+    metadata:
+      name: bursty
+      namespace: default
+      labels:
+        name: bursty-workload
+      annotations:
+        # Disable CPU balance with CRIO
+        cpu-load-balancing.crio.io: "true"
+        cpu-quota.crio.io: "true"
+    spec:
+      # Map to the correct performance class
+      runtimeClassName: performance-perfprofile-policy
+      restartPolicy: Always
+      # Force to fetch latest test  image
+      imagePullPolicy: Always
+      containers:
+      - name: bursty-sleeper
+        image: registry.access.redhat.com/ubi8/ubi-minimal
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "10m"
+        command:
+        - "/bin/bash"
+        - "-ec"
+        args:
+        - |
+          while true; do
+            echo "We are a bursty pod, about to sleep for 10s..."
+            sleep 10
+          done
