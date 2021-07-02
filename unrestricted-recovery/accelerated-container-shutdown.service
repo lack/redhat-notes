@@ -1,0 +1,10 @@
+[Unit]
+Description=Unlocks more CPUs for critical system processes during container shutdown
+DefaultDependencies=no
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/accelerated-container-startup.sh
+
+[Install]
+WantedBy=shutdown.target reboot.target halt.target
