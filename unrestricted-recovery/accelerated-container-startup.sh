@@ -77,9 +77,16 @@ setRestricted() {
   resetAffinity "$(restrictedCpuset)"
 }
 
+currentAffinity() {
+  local pid="$1"
+  taskset -pc $pid | awk -F': ' '{print $2}'
+}
+
 waitForReady() {
   echo "=========================================================="
   echo "Waiting ${MAXIMUM_WAIT_TIME}s for the initialization to complete"
+  local lastSystemdCpuset="$(currentAffinity 1)"
+  local lastDesiredCpuset="$(unrestrictedCpuset)"
   local t=0 s=10
   while [[ $t -lt $MAXIMUM_WAIT_TIME ]]; do
     # TODO: Can we query the state somehow and interrupt this sooner?
@@ -88,10 +95,16 @@ waitForReady() {
     echo "DEBUG: Crio lists $pending containers as Pending"
     sleep $s
     ((t += s))
-    # Because 'tuned' may mess with us, and the allowed set of unreserved cores
-    # may change as pods come up, we reassert the unrestricted affinity every
-    # 10s
-    resetAffinity "$(unrestrictedCpuset)"
+    local systemdCpuset="$(currentAffinity 1)"
+    local desiredCpuset="$(unrestrictedCpuset)"
+    # Because 'tuned' may mess with us, and the allowed set of unreserved
+    # cores may change as pods come up, we need to reassert the unrestricted
+    # affinity if it's not correct
+    if [[ $systemdCpuset != $lastSystemdCpuset || $lastDesiredCpuset != $desiredCpuset ]]; then
+      resetAffinity "$desiredCpuset"
+      lastSystemdCpuset="$(currentAffinity 1)"
+      lastDesiredCpuset="$desiredCpuset"
+    fi
   done
 }
 
