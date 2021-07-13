@@ -6,7 +6,7 @@
 #
 
 # The default set of critical processes whose affinity should be temporarily unbound:
-CRITICAL_PROCESSES=${CRITICAL_PROCESSES:-"systemd ovs crio kubelet NetworkManager"}
+CRITICAL_PROCESSES=${CRITICAL_PROCESSES:-"systemd ovs crio kubelet NetworkManager conmon dbus"}
 
 # Default wait time is 600s = 10m:
 MAXIMUM_WAIT_TIME=${MAXIMUM_WAIT_TIME:-600}
@@ -28,7 +28,7 @@ restrictedCpuset() {
   return 1
 }
 
-currentAffinity() {
+logAffinity() {
   echo "----------------------------------------------------------"
   for proc in $CRITICAL_PROCESSES; do
     echo "- $proc"
@@ -52,10 +52,10 @@ resetAffinity() {
       local tasksetOutput
       tasksetOutput="$(taskset -apc "$cpuset" $pid 2>&1)"
       if [[ $? -ne 0 ]]; then
-	echo "ERROR: $tasksetOutput"
+        echo "ERROR: $tasksetOutput"
         ((failcount++))
       else
-	((successcount++))
+        ((successcount++))
       fi
       taskset -p $pid | sed -e 's/^/  - /'
     done
