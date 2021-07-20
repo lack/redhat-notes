@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: $NAME
-        image: quay.io/centos/centos:8
+        image: registry.access.redhat.com/ubi8/ubi-minimal:8.4
         imagePullPolicy: IfNotPresent
         command:
         - "/sbin/chroot"
