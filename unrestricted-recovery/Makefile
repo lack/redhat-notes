@@ -1,11 +1,10 @@
 GOPATH  ?= $(HOME)/go
 MCMAKER := $(GOPATH)/bin/mcmaker
 
-04-accelerated-container-startup.yaml: accelerated-container-shutdown.service  accelerated-container-startup.path  accelerated-container-startup.service  accelerated-container-startup.sh
+04-accelerated-container-startup.yaml: accelerated-container-shutdown.service accelerated-container-startup.service accelerated-container-startup.sh
 	$(MAKE) $(MCMAKER)
 	$(MCMAKER) -name 04-accelerated-container-startup \
 		file -source accelerated-container-startup.sh -path /usr/local/bin/accelerated-container-startup.sh -mode 0755 \
-		unit -source accelerated-container-startup.path \
 		unit -source accelerated-container-startup.service \
 		unit -source accelerated-container-shutdown.service
 

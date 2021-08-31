@@ -1,7 +1,9 @@
 [Unit]
 Description=Unlocks more CPUs for critical system processes during container startup
-After=kubelet.service
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/accelerated-container-startup.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,0 @@
-[Path]
-PathExists=/var/lib/kubelet/cpu_manager_state
-
-[Install]
-WantedBy=multi-user.target
