@@ -20,7 +20,7 @@ spec:
         cpu-quota.crio.io: "true"
     spec:
       # Map to the correct performance class
-      runtimeClassName: performance-perfprofile-policy
+      runtimeClassName: performance-openshift-node-performance-profile
       restartPolicy: Always
       # Force to fetch latest test  image
       imagePullPolicy: Always

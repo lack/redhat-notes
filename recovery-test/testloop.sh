@@ -1,7 +1,7 @@
 #!/bin/bash
 
 interruption="hardreset"
-iterations=20
+iterations=10
 
 interrupt() {
   local how=$1
