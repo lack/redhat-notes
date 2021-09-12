@@ -11,6 +11,18 @@ CRITICAL_PROCESSES=${CRITICAL_PROCESSES:-"systemd ovs crio kubelet NetworkManage
 # Default wait time is 600s = 10m:
 MAXIMUM_WAIT_TIME=${MAXIMUM_WAIT_TIME:-600}
 
+# Default steady-state threshold = 2%
+# Allowed values:
+#  4  - absolute pod count (+/-)
+#  4% - percent change (+/-)
+#  -1 - disable the steady-state check
+STEADY_STATE_THRESHOLD=${STEADY_STATE_THRESHOLD:-2%}
+
+# Default steady-state window = 60s
+STEADY_STATE_WINDOW=${STEADY_STATE_WINDOW:-60}
+
+#######################################################
+
 unrestrictedCpuset() {
   if [[ ! -e /var/lib/kubelet/cpu_manager_state ]]; then
     # use all the cpus if kubelet is not configured yet
@@ -70,11 +82,44 @@ currentAffinity() {
   taskset -pc $pid | awk -F': ' '{print $2}'
 }
 
+within() {
+  local last=$1 current=$2 threshold=$3
+  local delta=0 pchange
+  delta=$(( current - last ))
+  if [[ $current -eq $last ]]; then
+    pchange=0
+  elif [[ $last -eq 0 ]]; then
+    pchange=1000000
+  else
+    pchange=$(( ( $delta * 100) / last ))
+  fi
+  echo "last:$last current:$current delta:$delta pchange:${pchange}%"
+  local absolute limit
+  case $threshold in
+    *%)
+      absolute=${pchange##-} # absolute value
+      limit=${threshold%%%}
+      ;;
+    *)
+      absolute=${delta##-} # absolute value
+      limit=$threshold
+      ;;
+  esac
+  if [[ $absolute -lt $limit ]]; then
+    echo "Within (+/-)$threshold"
+    return 0
+  else
+    echo "Outside (+/-)$threshold"
+    return 1
+  fi
+}
+
 waitForReady() {
   logger "Recovery: Waiting ${MAXIMUM_WAIT_TIME}s for the initialization to complete"
   local lastSystemdCpuset="$(currentAffinity 1)"
   local lastDesiredCpuset="$(unrestrictedCpuset)"
   local t=0 s=10
+  local lastCcount=0 ccount=0 steadyStateTime=0
   while [[ $t -lt $MAXIMUM_WAIT_TIME ]]; do
     sleep $s
     ((t += s))
@@ -87,6 +132,22 @@ waitForReady() {
       lastSystemdCpuset="$(currentAffinity 1)"
       lastDesiredCpuset="$desiredCpuset"
     fi
+
+    # Detect steady-state pod count
+    ccount=$(crictl ps | wc -l)
+    if within $lastCcount $ccount $STEADY_STATE_THRESHOLD; then
+      ((steadyStateTime += s))
+      echo "Steady-state for ${steadyStateTime}s"
+      if [[ $steadyStateTime -ge $STEADY_STATE_WINDOW ]]; then
+        logger "Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: would terminate"
+      fi
+    else
+      if [[ $steadyStateTime -gt 0 ]]; then
+        echo "Resetting steady-state timer"
+      fi
+      steadyStateTime=0
+    fi
+    lastCcount=$ccount
   done
   logger "Recovery: Recovery Complete Timeout"
 }
