@@ -1,6 +1,10 @@
 GOPATH  ?= $(HOME)/go
 MCMAKER := $(GOPATH)/bin/mcmaker
 
+.PHONY: test
+test: test.sh accelerated-container-startup.sh
+	./test.sh
+
 04-accelerated-container-startup.yaml: accelerated-container-shutdown.service accelerated-container-startup.service accelerated-container-startup.sh
 	$(MAKE) $(MCMAKER)
 	$(MCMAKER) -name 04-accelerated-container-startup \

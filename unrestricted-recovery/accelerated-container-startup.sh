@@ -111,7 +111,7 @@ within() {
       limit=$threshold
       ;;
   esac
-  if [[ $absolute -lt $limit ]]; then
+  if [[ $absolute -le $limit ]]; then
     echo "within (+/-)$threshold"
     return 0
   else
