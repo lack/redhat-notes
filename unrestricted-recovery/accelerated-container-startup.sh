@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Temporarily reset the core system processes's CPU affinity to be unrestricted to accellerate startup and shutdown
+# Temporarily reset the core system processes's CPU affinity to be unrestricted to accelerate startup and shutdown
 #
 # The defaults below can be overridden via environment variables
 #
@@ -19,6 +19,9 @@ MAXIMUM_WAIT_TIME=${MAXIMUM_WAIT_TIME:-600}
 STEADY_STATE_THRESHOLD=${STEADY_STATE_THRESHOLD:-2%}
 
 # Default steady-state window = 60s
+# If the running pod count stays within the given threshold for this time
+# period, return CPU utilization to normal before the maximum wait time has
+# expires
 STEADY_STATE_WINDOW=${STEADY_STATE_WINDOW:-60}
 
 #######################################################
@@ -139,7 +142,9 @@ waitForReady() {
       ((steadyStateTime += s))
       echo "Steady-state for ${steadyStateTime}s"
       if [[ $steadyStateTime -ge $STEADY_STATE_WINDOW ]]; then
-        logger "Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: would terminate"
+        echo "Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: Done"
+        logger "Recovery: Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: would terminate"
+	return 0
       fi
     else
       if [[ $steadyStateTime -gt 0 ]]; then
