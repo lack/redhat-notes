@@ -24,6 +24,9 @@ STEADY_STATE_THRESHOLD=${STEADY_STATE_THRESHOLD:-2%}
 # expires
 STEADY_STATE_WINDOW=${STEADY_STATE_WINDOW:-60}
 
+# Default steady-state does not allow 0 to count
+STEADY_STATE_ALLOW_ZERO=0
+
 #######################################################
 
 unrestrictedCpuset() {
@@ -96,7 +99,7 @@ within() {
   else
     pchange=$(( ( $delta * 100) / last ))
   fi
-  echo "last:$last current:$current delta:$delta pchange:${pchange}%"
+  echo -n "last:$last current:$current delta:$delta pchange:${pchange}%: "
   local absolute limit
   case $threshold in
     *%)
@@ -109,12 +112,21 @@ within() {
       ;;
   esac
   if [[ $absolute -lt $limit ]]; then
-    echo "Within (+/-)$threshold"
+    echo "within (+/-)$threshold"
     return 0
   else
-    echo "Outside (+/-)$threshold"
+    echo "outside (+/-)$threshold"
     return 1
   fi
+}
+
+steadystate() {
+  local last=$1 current=$2
+  if [[ $STEADY_STATE_ALLOWS_ZERO -eq 0 && $current -eq 0 ]]; then
+    echo "Waiting for a non-zero count before checking for steady-state"
+    return 1
+  fi
+  within $last $current $STEADY_STATE_THRESHOLD
 }
 
 waitForReady() {
@@ -138,40 +150,46 @@ waitForReady() {
 
     # Detect steady-state pod count
     ccount=$(crictl ps | wc -l)
-    if within $lastCcount $ccount $STEADY_STATE_THRESHOLD; then
+    if steadystate $lastCcount $ccount; then
       ((steadyStateTime += s))
-      echo "Steady-state for ${steadyStateTime}s"
+      echo "Steady-state for ${steadyStateTime}s/${STEADY_STATE_WINDOW}s"
       if [[ $steadyStateTime -ge $STEADY_STATE_WINDOW ]]; then
-        echo "Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: Done"
-        logger "Recovery: Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: would terminate"
-	return 0
+        logger "Recovery: Steady-state (+/- $STEADY_STATE_THRESHOLD) for ${STEADY_STATE_WINDOW}s: Done"
+        return 0
       fi
     else
       if [[ $steadyStateTime -gt 0 ]]; then
         echo "Resetting steady-state timer"
+        steadyStateTime=0
       fi
-      steadyStateTime=0
     fi
     lastCcount=$ccount
   done
   logger "Recovery: Recovery Complete Timeout"
 }
 
-if ! unrestrictedCpuset >&/dev/null; then
-  logger "Recovery: No unrestricted Cpuset could be detected"
-  exit 1
+main() {
+  if ! unrestrictedCpuset >&/dev/null; then
+    logger "Recovery: No unrestricted Cpuset could be detected"
+    return 1
+  fi
+
+  if ! restrictedCpuset >&/dev/null; then
+    logger "Recovery: No restricted Cpuset has been configured.  We are already running unrestricted."
+    return 0
+  fi
+
+  # Ensure we reset the CPU affinity when we exit this script for any reason
+  # This way either after the timer expires or after the process is interrupted
+  # via ^C or SIGTERM, we return things back to the way they should be.
+  trap setRestricted EXIT
+
+  logger "Recovery: Recovery Mode Starting"
+  setUnrestricted
+  waitForReady
+}
+
+if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
+  main "${@}"
+  exit $?
 fi
-
-if ! restrictedCpuset >&/dev/null; then
-  logger "Recovery: No restricted Cpuset has been configured.  We are already running unrestricted."
-  exit 0
-fi
-
-# Ensure we reset the CPU affinity when we exit this script for any reason
-# This way either after the timer expires or after the process is interrupted
-# via ^C or SIGTERM, we return things back to the way they should be.
-trap setRestricted EXIT
-
-logger "Recovery: Recovery Mode Starting"
-setUnrestricted
-waitForReady
