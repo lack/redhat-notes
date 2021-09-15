@@ -1,5 +1,0 @@
-      - name: $UNIT
-        dropins:
-        - name: $OVERRIDENAME
-          contents: |
-$CONTENTS

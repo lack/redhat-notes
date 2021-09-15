@@ -1,4 +1,0 @@
-      - name: $UNIT
-        enabled: true
-        contents: |
-$CONTENTS
