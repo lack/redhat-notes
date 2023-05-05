@@ -1,0 +1,13 @@
+FROM nginx:latest
+RUN apt-get update && apt-get install -y git && apt-get clean
+WORKDIR /usr/share/nginx/html
+# Create some fake content
+RUN mkdir content
+RUN echo "File contents" > content/file
+WORKDIR /usr/share/nginx/html/content
+# Create our git repo with the content in it
+RUN git init && git config user.name 'Automation' && git config user.email "openshift-kni@redhat.com"
+RUN git add . && git commit -am "First Commit"
+RUN git update-server-info
+WORKDIR /usr/share/nginx/html
+RUN ln -s content/.git content.git
